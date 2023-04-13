@@ -373,3 +373,133 @@ insert into Zeit values('202211','November','202204','4.Quartal','2022')
 insert into Zeit values('202212','Dezember','202204','4.Quartal','2022')
 
 select * from zeit
+
+--A1.5)
+
+Update MitarbeiterShop set Name = 'Georg Kühnel' where Mitarbeiter_ID = '02'
+Update Produktkategorie set Kategorie_Manager = 'Georg Kühnel' where Kategorie_ID = '01'
+
+Alter table MitarbeiterShop Alter column Manager_ID varchar(2)
+Alter table MitarbeiterShop add Manager_ID varchar(2)
+Update MitarbeiterShop set Manager_ID = Mitarbeiter_ID where Mitarbeiter_ID = '01'
+Alter table MitarbeiterShop add foreign key (Manager_ID) references MitarbeiterShop (Mitarbeiter_ID)
+Update MitarbeiterShop set Manager_ID = '01' where MitarbeiterShop.Name in (Select Kategorie_Manager from Produktkategorie)
+Update MitarbeiterShop set Manager_ID = '02' where MitarbeiterShop.Name in (Select Subkategorie_Manager from Produktsubkategorie where Kategorie_ID = 01)
+Update MitarbeiterShop set Manager_ID = '08' where MitarbeiterShop.Name in (Select Subkategorie_Manager from Produktsubkategorie where Kategorie_ID = 02)
+Update MitarbeiterShop set Manager_ID = '03' where MitarbeiterShop.Name in (Select Subkategorie_Manager from Produktsubkategorie where Kategorie_ID = 03)
+
+Select * from MitarbeiterShop
+
+select * from Produktsubkategorie
+
+--A1.7)
+--Bon_ID,Fil_ID,Datum,Prod_ID,Preis,Anzahl
+--Bon ID varchar(4)
+--Fil ID varchar(5)
+--Datum date
+--Prod ID varchar(4)
+--Preis money
+--Anzahl int
+
+
+--1.8
+Create Table BelegeTMP(
+	Bon_ID varchar(4),
+	Fil_ID varchar(5),
+	Datum date,
+	Prod_ID varchar(4),
+	Preis money,
+	Anzahl int
+	)
+
+Create Table UmsatzdatenTMP(
+		Mon_ID VARCHAR (6) Foreign key references Zeit(Mon_ID),
+		Land_ID VARCHAR (2) Foreign key references Geografie(Land_ID),
+		Produkt_ID VARCHAR (4) Foreign key references Produkt(Produkt_ID),
+		Mitarbeiter_ID VARCHAR (2) Foreign key references MitarbeiterShop(Mitarbeiter_ID),
+		Umsatzbetrag MONEY,
+		Umsatzmenge INTEGER
+		)
+
+BULK INSERT BelegeTMP
+	FROM 'D:\BI\Belege_2021_1.csv'
+	WITH (
+	FIELDTERMINATOR = ',', 
+	FIRSTROW = 2, 
+	ROWTERMINATOR = '\n'
+	) 
+
+BULK INSERT BelegeTMP
+	FROM 'D:\BI\Belege_2021_2.csv'
+	WITH (
+	FIELDTERMINATOR = ',', 
+	FIRSTROW = 2, 
+	ROWTERMINATOR = '\n'
+	) 
+
+BULK INSERT BelegeTMP
+	FROM 'D:\BI\Belege_2021_3.csv'
+	WITH (
+	FIELDTERMINATOR = ',', 
+	FIRSTROW = 2, 
+	ROWTERMINATOR = '\n'
+	) 
+
+BULK INSERT BelegeTMP
+	FROM 'D:\BI\Belege_2021_4.csv'
+	WITH (
+	FIELDTERMINATOR = ',', 
+	FIRSTROW = 2, 
+	ROWTERMINATOR = '\n'
+	) 
+
+BULK INSERT BelegeTMP
+	FROM 'D:\BI\Belege_2022_1.csv'
+	WITH (
+	FIELDTERMINATOR = ',', 
+	FIRSTROW = 2, 
+	ROWTERMINATOR = '\n'
+	) 
+
+BULK INSERT BelegeTMP
+	FROM 'D:\BI\Belege_2022_2.csv'
+	WITH (
+	FIELDTERMINATOR = ',', 
+	FIRSTROW = 2, 
+	ROWTERMINATOR = '\n'
+	) 
+
+BULK INSERT BelegeTMP
+	FROM 'D:\BI\Belege_2022_3.csv'
+	WITH (
+	FIELDTERMINATOR = ',', 
+	FIRSTROW = 2, 
+	ROWTERMINATOR = '\n'
+	) 
+
+BULK INSERT BelegeTMP
+	FROM 'D:\BI\Belege_2022_4.csv'
+	WITH (
+	FIELDTERMINATOR = ',', 
+	FIRSTROW = 2, 
+	ROWTERMINATOR = '\n'
+	) 
+
+INSERT INTO UmsatzdatenTMP Select Format(Datum, 'yyyyMM'), Left(Fil_ID, 2), Prod_ID, '01', sum(Preis * Anzahl), sum(Anzahl )
+from BelegeTMP
+Group by Format(Datum, 'yyyyMM'), Left(Fil_ID, 2), Prod_ID
+
+select * from Produktsubkategorie
+Select * from MitarbeiterShop
+
+Alter Table Produktsubkategorie add Mitarbeiter_ID varchar(2)
+Update Produktsubkategorie Set Mitarbeiter_ID = (select Mitarbeiter_ID from MitarbeiterShop M where M.Name =  Produktsubkategorie.Subkategorie_Manager)
+
+Select * from Produkt
+
+Update UmsatzdatenTMP Set Mitarbeiter_ID = (select Mitarbeiter_ID from Produktsubkategorie PS, Produkt p where  PS.Subkategorie_ID = p.Subkategorie_ID and p.Produkt_ID = UmsatzdatenTMP.Produkt_ID)
+
+
+Insert Into Umsatzdaten Select Mon_ID, Land_ID, Produkt_ID, Mitarbeiter_ID, Umsatzbetrag, Umsatzmenge from UmsatzdatenTMP
+
+Select sum(Umsatzbetrag) from Umsatzdaten
